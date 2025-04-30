@@ -1,0 +1,5 @@
+Evolutive:
+1) Cibo che vale 2 punti e fa crescere il serpente di più.
+2) Cibo che accelera e cibo che rallenta temporaneamente il serpente.
+3) Cibo "negativo" che fa rimpicciolire il serpente o toglie punti (da evitare!).
+4) Cibo che appare solo per un tempo limitato e vale 3 punti.
