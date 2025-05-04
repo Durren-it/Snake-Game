@@ -48,6 +48,11 @@ const getRandomCell = (availableCells) => {
     return availableCells[randomIndex];
 };
 
+// Function to update available cells after food is created
+const updateAvailableCells = (cells, position) => {
+    return cells.filter(([x, y]) => x !== position[0] || y !== position[1]);
+};
+
 const updateFoodPosition = () => {
     let availableCells = getAvailableCells();
     
@@ -60,23 +65,19 @@ const updateFoodPosition = () => {
     // Generate base food position
     const baseFood = getRandomCell(availableCells);
     [foodX, foodY] = baseFood;
-    
-    // Update available cells removing used position
-    availableCells = availableCells.filter(
-        ([x, y]) => x !== foodX || y !== foodY
-    );
+    availableCells = updateAvailableCells(availableCells, baseFood);
 
     // Generate double food position
     const doubleFood = getRandomCell(availableCells);
     [foodDoubleX, foodDoubleY] = doubleFood;
-    
-    // Update available cells for future food types
-    availableCells = availableCells.filter(
-        ([x, y]) => x !== foodDoubleX || y !== foodDoubleY
-    );
+    availableCells = updateAvailableCells(availableCells, doubleFood);
+
+    // Generate penalty food position
+    const penaltyFood = getRandomCell(availableCells);
+    [foodPenaltyX, foodPenaltyY] = penaltyFood;
+    availableCells = updateAvailableCells(availableCells, penaltyFood);
 
     // TODO: Futuri cibi
-    // Priority 3: Penalty food
     // Priority 4: Speed food
     // Priority 5: Slow food
     // Priority 6: Triple temporary food
@@ -128,6 +129,7 @@ const initGame = () => {
     let html = `
         <div class="food" style="grid-area: ${foodY} / ${foodX}"></div>
         <div class="food-double" style="grid-area: ${foodDoubleY} / ${foodDoubleX}"></div>
+        <div class="food-penalty" style="grid-area: ${foodPenaltyY} / ${foodPenaltyX}"></div>
     `;
 
     // Checking if the snake hit the base food
@@ -143,10 +145,23 @@ const initGame = () => {
         snakeBody.push([foodDoubleY, foodDoubleX]);
         score += 2; // increment score by 2
         updateScore();
+    } else if(snakeX === foodPenaltyX && snakeY === foodPenaltyY) {
+        // Check if removing a segment would result in snake length 0
+        if (snakeBody.length === 1) {
+            gameOver = true;
+            return;
+        }
+        updateFoodPosition();
+        // Remove last segment of snake
+        snakeBody.pop();
+        // Decrease score if greater than 0
+        if (score > 0) {
+            score--;
+            updateScore();
+        }
     }
 
     // TODO: Futuri cibi
-    // Priority 3: Penalty food collision
     // Priority 4: Speed food collision
     // Priority 5: Slow food collision
     // Priority 6: Triple temporary food collision
