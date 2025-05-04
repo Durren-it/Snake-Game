@@ -6,6 +6,7 @@ const controls = document.querySelectorAll(".controls i");
 let moveCounter = 0;
 let moveDelay = 1; // 1 = normal movement, 2 = half movement
 let speedResetTimeoutId;
+let tripleFoodTimeoutId;
 let gameOver = false;
 let foodX, foodY;
 let foodDoubleX, foodDoubleY;
@@ -99,9 +100,18 @@ const updateFoodPosition = () => {
     } else {
         foodSlowX = foodSlowY = -100;
     }
-
-    // TODO: Futuri cibi
-    // Priority 6: Triple temporary food
+    
+    const tripleFood = getRandomCell(availableCells);
+    [foodTripleX, foodTripleY] = tripleFood;
+    
+    // Set timeout to remove triple food after 5 seconds
+    if (tripleFoodTimeoutId) {
+        clearTimeout(tripleFoodTimeoutId);
+    }
+    tripleFoodTimeoutId = setTimeout(() => {
+        foodTripleX = foodTripleY = -100;
+        tripleFoodTimeoutId = null;
+    }, 5000);
 };
 
 const handleGameOver = () => {
@@ -109,6 +119,9 @@ const handleGameOver = () => {
     clearInterval(setIntervalId);
     if (speedResetTimeoutId) {
         clearTimeout(speedResetTimeoutId);
+    }
+    if (tripleFoodTimeoutId) {
+        clearTimeout(tripleFoodTimeoutId);
     }
     
     // Check if game over was caused by filling the board
@@ -236,11 +249,29 @@ const checkFoodCollision = (x, y) => {
             updateFoodPosition();
         }
         return true;
+    } else if(x === foodTripleX && y === foodTripleY) {
+        // Add three segments to snake body
+        for (let i = 0; i < 3; i++) {
+            snakeBody.push([foodTripleY, foodTripleX]);
+        }
+        score += 3;
+        resetSpeed();
+        updateScore();
+        
+        // Clear the timeout since we ate the food
+        if (tripleFoodTimeoutId) {
+            clearTimeout(tripleFoodTimeoutId);
+            tripleFoodTimeoutId = null;
+        }
+        
+        // Update all food positions after eating triple food
+        updateFoodPosition();
+        return true;
     }
+
     return false;
 
     // TODO: Futuri cibi
-    // Priority 6: Triple temporary food collision
 
     // TODO: Sistemare input di movimento troppo rapidi (Ti uccidi da solo)
     // TODO: Legenda per i cibi (base, doppio, penalty, speed, slow, triple)
@@ -269,6 +300,11 @@ const initGame = () => {
     // Add slow food only if snake is not at min speed
     if (moveDelay !== 2 && foodSlowX > 0) {
         html += `<div class="food-slow" style="grid-area: ${foodSlowY} / ${foodSlowX}"></div>`;
+    }
+
+    // Add triple food if it exists
+    if (foodTripleX > 0 && foodTripleY > 0) {
+        html += `<div class="food-triple-temp" style="grid-area: ${foodTripleY} / ${foodTripleX}"></div>`;
     }
 
     // Handle intermediate position check for high speed movement
