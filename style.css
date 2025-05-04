@@ -53,12 +53,32 @@ body {
   background: #60CBFF;
 }
 
+.play-board .food-double {
+  background: #00FFFF;
+}
+
+.play-board .food-speed {
+  background: #00FF00;
+}
+
+.play-board .food-slow {
+  background: #9932CC;
+}
+
+.play-board .food-penalty {
+  background: #1E1E1E;
+}
+
+.play-board .food-triple-temp {
+  background: #FFD700;
+}
+
 .controls {
   display: none;
   justify-content: space-between;
 }
 
-.controls i {
+.controls b {
   padding: 25px 0;
   text-align: center;
   font-size: 1.3rem;
