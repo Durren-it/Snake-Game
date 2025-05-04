@@ -3,6 +3,7 @@ const scoreElement = document.querySelector(".score");
 const highScoreElement = document.querySelector(".high-score");
 const controls = document.querySelectorAll(".controls i");
 
+let speedResetTimeoutId;
 let gameOver = false;
 let foodX, foodY;
 let foodDoubleX, foodDoubleY;
@@ -78,10 +79,15 @@ const updateFoodPosition = () => {
     [foodPenaltyX, foodPenaltyY] = penaltyFood;
     availableCells = updateAvailableCells(availableCells, penaltyFood);
 
-    // Generate speed food position
-    const speedFood = getRandomCell(availableCells);
-    [foodSpeedX, foodSpeedY] = speedFood;
-    availableCells = updateAvailableCells(availableCells, speedFood);
+    // Generate speed food only if snake is not at max speed
+    if (Math.abs(velocityX) < 2 && Math.abs(velocityY) < 2) {
+        const speedFood = getRandomCell(availableCells);
+        [foodSpeedX, foodSpeedY] = speedFood;
+        availableCells = updateAvailableCells(availableCells, speedFood);
+    } else {
+        // Place speed food far outside the grid when not needed
+        foodSpeedX = foodSpeedY = -100;
+    }
 
     // TODO: Futuri cibi
     // Priority 5: Slow food
@@ -89,8 +95,11 @@ const updateFoodPosition = () => {
 };
 
 const handleGameOver = () => {
-    // Clear the interval and reloading the page on game over
+    // Clear the interval and timeout IDs, reloading the page on game over
     clearInterval(setIntervalId);
+    if (speedResetTimeoutId) {
+        clearTimeout(speedResetTimeoutId);
+    }
     
     // Check if game over was caused by filling the board
     const message = availableCells.length === 0 
@@ -134,55 +143,70 @@ const updateScore = () => {
 
 // Function to reset snake speed to normal
 const resetSpeed = () => {
+    const wasMaxSpeed = Math.abs(velocityX) === 2 || Math.abs(velocityY) === 2;
+    
+    // Reset speed to normal
     velocityX = velocityX === 2 ? 1 : velocityX === -2 ? -1 : velocityX;
     velocityY = velocityY === 2 ? 1 : velocityY === -2 ? -1 : velocityY;
+    
+    // If we were at max speed and now we're not, update food positions
+    if (wasMaxSpeed) {
+        updateFoodPosition();
+    }
 };
 
-const initGame = () => {
-    if(gameOver) return handleGameOver();
-    let html = `
-        <div class="food" style="grid-area: ${foodY} / ${foodX}"></div>
-        <div class="food-double" style="grid-area: ${foodDoubleY} / ${foodDoubleX}"></div>
-        <div class="food-penalty" style="grid-area: ${foodPenaltyY} / ${foodPenaltyX}"></div>
-        <div class="food-speed" style="grid-area: ${foodSpeedY} / ${foodSpeedX}"></div>
-    `;
+// Function to check food collision
+const checkFoodCollision = (x, y) => {
 
-    // Checking if the snake hit the base food
-    if(snakeX === foodX && snakeY === foodY) {
+    // Function to clear and reset speed timer
+    const resetSpeedTimer = () => {
+        if (speedResetTimeoutId) {
+            clearTimeout(speedResetTimeoutId);
+        }
+        speedResetTimeoutId = setTimeout(() => {
+            velocityX = Math.sign(velocityX);
+            velocityY = Math.sign(velocityY);
+            speedResetTimeoutId = null;
+        }, 15000); // 15 seconds
+    };
+
+    // Check collisions with all types of food for a specific position
+    if(x === foodX && y === foodY) {
         updateFoodPosition();
-        snakeBody.push([foodY, foodX]); // Pushing food position to snake body array
-        score++; // increment score by 1
-        resetSpeed(); // Reset speed to normal
-        updateScore();
-    } else if(snakeX === foodDoubleX && snakeY === foodDoubleY) {
-        updateFoodPosition();
-        // Pushing food position to snake body array twice
-        snakeBody.push([foodDoubleY, foodDoubleX]);
-        snakeBody.push([foodDoubleY, foodDoubleX]);
-        score += 2; // increment score by 2
+        snakeBody.push([foodY, foodX]);
+        score++;
         resetSpeed();
         updateScore();
-    } else if(snakeX === foodPenaltyX && snakeY === foodPenaltyY) {
-        // Check if removing a segment would result in snake length 0
+        return true;
+    } else if(x === foodDoubleX && y === foodDoubleY) {
+        updateFoodPosition();
+        snakeBody.push([foodDoubleY, foodDoubleX]);
+        snakeBody.push([foodDoubleY, foodDoubleX]);
+        score += 2;
+        resetSpeed();
+        updateScore();
+        return true;
+    } else if(x === foodPenaltyX && y === foodPenaltyY) {
         if (snakeBody.length === 1) {
             gameOver = true;
-            return;
+            return true;
         }
         updateFoodPosition();
-        // Remove last segment of snake
         snakeBody.pop();
-        // Decrease score if greater than 0
         if (score > 0) {
             score--;
             resetSpeed();
             updateScore();
         }
-    } else if(snakeX === foodSpeedX && snakeY === foodSpeedY) {
+        return true;
+    } else if(x === foodSpeedX && y === foodSpeedY) {
         updateFoodPosition();
-        // Double current velocity
         velocityX *= 2;
         velocityY *= 2;
+        resetSpeedTimer(); // Start the timer when speed food is eaten
+        return true;
     }
+    return false;
 
     // TODO: Futuri cibi
     // Priority 5: Slow food collision
@@ -190,30 +214,70 @@ const initGame = () => {
 
     // TODO: Sistemare input di movimento troppo rapidi (Ti uccidi da solo)
     // TODO: Legenda per i cibi (base, doppio, penalty, speed, slow, triple)
+}
+
+const initGame = () => {
+    if(gameOver) return handleGameOver();
+
+    let html = `
+        <div class="food" style="grid-area: ${foodY} / ${foodX}"></div>
+        <div class="food-double" style="grid-area: ${foodDoubleY} / ${foodDoubleX}"></div>
+        <div class="food-penalty" style="grid-area: ${foodPenaltyY} / ${foodPenaltyX}"></div>
+    `;
+
+    // Add speed food only if snake is not at max speed
+    if (Math.abs(velocityX) < 2 && Math.abs(velocityY) < 2 && foodSpeedX > 0) {
+        html += `<div class="food-speed" style="grid-area: ${foodSpeedY} / ${foodSpeedX}"></div>`;
+    }
+
+   // Handle intermediate position check for high speed movement
+   if (Math.abs(velocityX) === 2 || Math.abs(velocityY) === 2) {
+    const intermediateX = snakeX + Math.sign(velocityX);
+    const intermediateY = snakeY + Math.sign(velocityY);
+    checkFoodCollision(intermediateX, intermediateY);
+    }
 
     // Updating the snake's head position based on the current velocity
     snakeX += velocityX;
     snakeY += velocityY;
-    
-    // Shifting forward the values of the elements in the snake body by one
-    for (let i = snakeBody.length - 1; i > 0; i--) {
-        snakeBody[i] = snakeBody[i - 1];
-    }
-    snakeBody[0] = [snakeX, snakeY]; // Setting first element of snake body to current snake position
+
+    // Check for food collisions at final position
+    checkFoodCollision(snakeX, snakeY);
 
     // Checking if the snake's head is out of wall, if so setting gameOver to true
     if(snakeX <= 0 || snakeX > 30 || snakeY <= 0 || snakeY > 30) {
         return gameOver = true;
     }
 
+    // Update snake body
+    for (let i = snakeBody.length - 1; i > 0; i--) {
+        snakeBody[i] = snakeBody[i - 1];
+    }
+    snakeBody[0] = [snakeX, snakeY];
+
+    // Generate snake body HTML and check self-collision
     for (let i = 0; i < snakeBody.length; i++) {
-        // Adding a div for each part of the snake's body
         html += `<div class="head" style="grid-area: ${snakeBody[i][1]} / ${snakeBody[i][0]}"></div>`;
-        // Checking if the snake head hit the body, if so set gameOver to true
+        
+        // Check self-collision only with actual body segments, not intermediate ones
         if (i !== 0 && snakeBody[0][1] === snakeBody[i][1] && snakeBody[0][0] === snakeBody[i][0]) {
             gameOver = true;
         }
     }
+
+    // If speed is 2, add visual intermediate segments (only for display)
+    if (Math.abs(velocityX) === 2 || Math.abs(velocityY) === 2) {
+        for (let i = 0; i < snakeBody.length - 1; i++) {
+            const current = snakeBody[i];
+            const next = snakeBody[i + 1];
+            const intermediateX = current[0] + Math.sign(next[0] - current[0]);
+            const intermediateY = current[1] + Math.sign(next[1] - current[1]);
+            
+            // Add intermediate segment only for visualization
+            html += `<div class="head" style="grid-area: ${intermediateY} / ${intermediateX}"></div>`;
+        }
+    }
+
     playBoard.innerHTML = html;
 }
 
