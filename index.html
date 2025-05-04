@@ -13,10 +13,22 @@
 
     <div class="wrapper">
       <div class="game-details">
-        <span class="score">Score: 0</span>
-        <span class="high-score">High Score: 0</span>
+          <span class="score">Score: 0</span>
+          <span class="high-score">High Score: 0</span>
       </div>
-      <div class="play-board"></div>
+      <div class="legend-container">
+          <div class="legend-left">
+              <div class="legend-item"><span class="food-dot"></span>Cibo base: +1 punto</div>
+              <div class="legend-item"><span class="food-dot double"></span>Cibo doppio: +2 punti</div>
+              <div class="legend-item"><span class="food-dot triple"></span>Cibo triplo: +3 punti, attivo solo 5 secondi</div>
+          </div>
+          <div class="play-board"></div>
+          <div class="legend-right">
+              <div class="legend-item"><span class="food-dot penalty"></span>Cibo cattivo: -1 punto</div>
+              <div class="legend-item"><span class="food-dot speed"></span>Aumento velocità: x2</div>
+              <div class="legend-item"><span class="food-dot slow"></span>Riduzione velocità: x0.5</div>
+          </div>
+      </div>
       <div class="controls">
         <b data-key="ArrowLeft">⬅️</b>
         <b data-key="ArrowUp">⬆️</b>
