@@ -24,6 +24,7 @@ highScoreElement.innerText = `High Score: ${highScore}`;
 // Functions for food position management
 const getAvailableCells = () => {
     const occupiedCells = new Set();
+    availableCells = []; // Reset the array before populating it
     
     // Add snake body cells to occupied set
     snakeBody.forEach(([x, y]) => {
@@ -77,8 +78,12 @@ const updateFoodPosition = () => {
     [foodPenaltyX, foodPenaltyY] = penaltyFood;
     availableCells = updateAvailableCells(availableCells, penaltyFood);
 
+    // Generate speed food position
+    const speedFood = getRandomCell(availableCells);
+    [foodSpeedX, foodSpeedY] = speedFood;
+    availableCells = updateAvailableCells(availableCells, speedFood);
+
     // TODO: Futuri cibi
-    // Priority 4: Speed food
     // Priority 5: Slow food
     // Priority 6: Triple temporary food
 };
@@ -97,18 +102,21 @@ const handleGameOver = () => {
 }
 
 const changeDirection = e => {
-    // Changing velocity value based on key press
-    if(e.key === "ArrowUp" && velocityY != 1) {
+    // Saving the current speed based on velocity values from the speed food
+    const currentSpeed = Math.abs(velocityX) === 2 || Math.abs(velocityY) === 2 ? 2 : 1;
+    
+    // Changing velocity value based on key press and current speed direction
+    if(e.key === "ArrowUp" && velocityY <= 0) {
         velocityX = 0;
-        velocityY = -1;
-    } else if(e.key === "ArrowDown" && velocityY != -1) {
+        velocityY = -currentSpeed;
+    } else if(e.key === "ArrowDown" && velocityY >= 0) {
         velocityX = 0;
-        velocityY = 1;
-    } else if(e.key === "ArrowLeft" && velocityX != 1) {
-        velocityX = -1;
+        velocityY = currentSpeed;
+    } else if(e.key === "ArrowLeft" && velocityX <= 0) {
+        velocityX = -currentSpeed;
         velocityY = 0;
-    } else if(e.key === "ArrowRight" && velocityX != -1) {
-        velocityX = 1;
+    } else if(e.key === "ArrowRight" && velocityX >= 0) {
+        velocityX = currentSpeed;
         velocityY = 0;
     }
 }
@@ -124,12 +132,19 @@ const updateScore = () => {
     highScoreElement.innerText = `High Score: ${highScore}`;
 }
 
+// Function to reset snake speed to normal
+const resetSpeed = () => {
+    velocityX = velocityX === 2 ? 1 : velocityX === -2 ? -1 : velocityX;
+    velocityY = velocityY === 2 ? 1 : velocityY === -2 ? -1 : velocityY;
+};
+
 const initGame = () => {
     if(gameOver) return handleGameOver();
     let html = `
         <div class="food" style="grid-area: ${foodY} / ${foodX}"></div>
         <div class="food-double" style="grid-area: ${foodDoubleY} / ${foodDoubleX}"></div>
         <div class="food-penalty" style="grid-area: ${foodPenaltyY} / ${foodPenaltyX}"></div>
+        <div class="food-speed" style="grid-area: ${foodSpeedY} / ${foodSpeedX}"></div>
     `;
 
     // Checking if the snake hit the base food
@@ -137,6 +152,7 @@ const initGame = () => {
         updateFoodPosition();
         snakeBody.push([foodY, foodX]); // Pushing food position to snake body array
         score++; // increment score by 1
+        resetSpeed(); // Reset speed to normal
         updateScore();
     } else if(snakeX === foodDoubleX && snakeY === foodDoubleY) {
         updateFoodPosition();
@@ -144,6 +160,7 @@ const initGame = () => {
         snakeBody.push([foodDoubleY, foodDoubleX]);
         snakeBody.push([foodDoubleY, foodDoubleX]);
         score += 2; // increment score by 2
+        resetSpeed();
         updateScore();
     } else if(snakeX === foodPenaltyX && snakeY === foodPenaltyY) {
         // Check if removing a segment would result in snake length 0
@@ -157,12 +174,17 @@ const initGame = () => {
         // Decrease score if greater than 0
         if (score > 0) {
             score--;
+            resetSpeed();
             updateScore();
         }
+    } else if(snakeX === foodSpeedX && snakeY === foodSpeedY) {
+        updateFoodPosition();
+        // Double current velocity
+        velocityX *= 2;
+        velocityY *= 2;
     }
 
     // TODO: Futuri cibi
-    // Priority 4: Speed food collision
     // Priority 5: Slow food collision
     // Priority 6: Triple temporary food collision
 
