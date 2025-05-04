@@ -3,23 +3,34 @@ const scoreElement = document.querySelector(".score");
 const highScoreElement = document.querySelector(".high-score");
 const controls = document.querySelectorAll(".controls i");
 
+// Game state variables
 let moveCounter = 0;
 let moveDelay = 1; // 1 = normal movement, 2 = half movement
 let speedResetTimeoutId;
 let tripleFoodTimeoutId;
 let gameOver = false;
+let canChangeDirection = true;
+
+// Food positions
 let foodX, foodY;
 let foodDoubleX, foodDoubleY;
 let foodPenaltyX, foodPenaltyY;
 let foodSpeedX, foodSpeedY;
 let foodSlowX, foodSlowY;
-let foodTripleX, foodTripleY; 
+let foodTripleX, foodTripleY;
+
+// Snake properties
 let snakeX = 5, snakeY = 5;
 let velocityX = 0, velocityY = 0;
 let snakeBody = [];
 let availableCells = [];
+
+// Game control variables
 let setIntervalId;
 let score = 0;
+let inputQueue = [];
+const INPUT_DELAY = 50;
+let lastMoveTimestamp = Date.now();
 
 // Getting high score from the local storage
 let highScore = localStorage.getItem("high-score") || 0;
@@ -134,23 +145,88 @@ const handleGameOver = () => {
 }
 
 const changeDirection = e => {
+    // Create a timestamp to manage input delay
+    const currentTime = Date.now();
+
+    // Allow first move regardless of direction
+    if (velocityX === 0 && velocityY === 0) {
+        switch(e.key) {
+            case "ArrowUp":
+                velocityY = -1;
+                break;
+            case "ArrowDown":
+                velocityY = 1;
+                break;
+            case "ArrowLeft":
+                velocityX = -1;
+                break;
+            case "ArrowRight":
+                velocityX = 1;
+                break;
+            default:
+                return;
+        }
+        canChangeDirection = false;
+        lastMoveTimestamp = currentTime;
+        return;
+    }
+    
+    if (!canChangeDirection) {
+        // Queue only valid directional changes based on current movement axis
+        if ((velocityX !== 0 && (e.key === "ArrowUp" || e.key === "ArrowDown")) ||
+            (velocityY !== 0 && (e.key === "ArrowLeft" || e.key === "ArrowRight"))) {
+            inputQueue = [e.key];
+        }
+        return;
+    }
+
     // Saving the current speed based on velocity values from the speed food
     const currentSpeed = Math.abs(velocityX) === 2 || Math.abs(velocityY) === 2 ? 2 : 1;
+
+    // Get current moving axis (x or y) and prevent opposite direction on same axis
+    const isMovingVertically = velocityY !== 0;
+    const isMovingHorizontally = velocityX !== 0;
     
-    // Changing velocity value based on key press and current speed direction
-    if(e.key === "ArrowUp" && velocityY <= 0) {
-        velocityX = 0;
-        velocityY = -currentSpeed;
-    } else if(e.key === "ArrowDown" && velocityY >= 0) {
-        velocityX = 0;
-        velocityY = currentSpeed;
-    } else if(e.key === "ArrowLeft" && velocityX <= 0) {
-        velocityX = -currentSpeed;
-        velocityY = 0;
-    } else if(e.key === "ArrowRight" && velocityX >= 0) {
-        velocityX = currentSpeed;
-        velocityY = 0;
+    // Check if the requested direction is valid
+    let isValidDirection = false;
+    if (isMovingHorizontally) {
+        isValidDirection = (e.key === "ArrowUp" || e.key === "ArrowDown");
+    } else if (isMovingVertically) {
+        isValidDirection = (e.key === "ArrowLeft" || e.key === "ArrowRight");
     }
+
+    // If direction is not valid or can't change direction, queue only valid moves
+    if (!canChangeDirection || !isValidDirection) {
+        if (isValidDirection) {
+            inputQueue = [e.key];
+        }
+        return;
+    }
+
+    // Apply the new direction
+    switch(e.key) {
+        case "ArrowUp":
+            velocityX = 0;
+            velocityY = -currentSpeed;
+            break;
+        case "ArrowDown":
+            velocityX = 0;
+            velocityY = currentSpeed;
+            break;
+        case "ArrowLeft":
+            velocityX = -currentSpeed;
+            velocityY = 0;
+            break;
+        case "ArrowRight":
+            velocityX = currentSpeed;
+            velocityY = 0;
+            break;
+        default:
+            return;
+    }
+
+    canChangeDirection = false;
+    lastMoveTimestamp = currentTime;
 }
 
 // Calling changeDirection on each key click and passing key dataset value as an object
@@ -270,15 +346,18 @@ const checkFoodCollision = (x, y) => {
     }
 
     return false;
-
-    // TODO: Futuri cibi
-
-    // TODO: Sistemare input di movimento troppo rapidi (Ti uccidi da solo)
-    // TODO: Legenda per i cibi (base, doppio, penalty, speed, slow, triple)
 }
 
 const initGame = () => {
     if(gameOver) return handleGameOver();
+
+    // Process queued input only when snake actually moves
+    if (inputQueue.length > 0 && moveCounter >= moveDelay) {
+        const currentTime = Date.now();
+        if (currentTime - lastMoveTimestamp >= INPUT_DELAY) {
+            changeDirection({ key: inputQueue.shift() });
+        }
+    }
 
     // Increment of moveCounter to manage speed
     moveCounter++;
@@ -286,6 +365,7 @@ const initGame = () => {
     // Update position of snake only if moveCounter reach moveDelay
     let shouldMove = moveCounter >= moveDelay;
 
+    // Generate base HTML for foods
     let html = `
         <div class="food" style="grid-area: ${foodY} / ${foodX}"></div>
         <div class="food-double" style="grid-area: ${foodDoubleY} / ${foodDoubleX}"></div>
@@ -316,6 +396,7 @@ const initGame = () => {
 
     // Update position only when shouldMove is true
     if (shouldMove) {
+        canChangeDirection = true;  // Allow new direction changes after movement
         snakeX += velocityX;
         snakeY += velocityY;
         moveCounter = 0; // Reset counter after moving
