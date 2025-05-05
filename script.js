@@ -116,9 +116,7 @@ const updateFoodPosition = () => {
     [foodTripleX, foodTripleY] = tripleFood;
     
     // Set timeout to remove triple food after 5 seconds
-    if (tripleFoodTimeoutId) {
-        clearTimeout(tripleFoodTimeoutId);
-    }
+    clearTimeout(tripleFoodTimeoutId)
     tripleFoodTimeoutId = setTimeout(() => {
         foodTripleX = foodTripleY = -100;
         tripleFoodTimeoutId = null;
@@ -326,10 +324,13 @@ const checkFoodCollision = (x, y) => {
         }
         return true;
     } else if(x === foodTripleX && y === foodTripleY) {
-        // Add three segments to snake body
-        for (let i = 0; i < 3; i++) {
-            snakeBody.push([foodTripleY, foodTripleX]);
-        }
+        // Add three segments to snake body at the end
+        const lastSegment = snakeBody[snakeBody.length - 1] || [foodTripleY, foodTripleX];
+        
+        // Add the three segments at the last position
+        snakeBody.push([...lastSegment]);
+        snakeBody.push([...lastSegment]);
+        snakeBody.push([...lastSegment]);
         score += 3;
         resetSpeed();
         updateScore();
@@ -443,4 +444,4 @@ const initGame = () => {
 
 updateFoodPosition();
 setIntervalId = setInterval(initGame, 100);
-document.addEventListener("keyup", changeDirection);
+document.addEventListener("keydown", changeDirection);
